@@ -3,12 +3,12 @@ import numpy as np
 import requests
 import time
 from dhanhq import dhanhq
-
+import os #
 # =====================================================================
 # 1. आपके धन क्रेडेंशियल्स 
 # =====================================================================
-DHAN_CLIENT_ID = "1111887318"
-DHAN_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1c2VyUmVnaW9uIjoiUjEiLCJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzkyMjMzMjg3LCJpYXQiOjE3OTIxNDY4ODcsInRva2VuQ29uc3VtZXJUeXBlIjoiU0VMRiIsIndlYmhvb2tVcmwiOiIiLCJkaGFuQ2xpZW50SWQiOiIxMTExODg3MzE4In0.Euc-3uwEdumnPOjyruXgbTVxHojPEmevukYW8S-KRiNbnZ2Bii90lBxkc-AKSJjicnokeA6mBvJdjutuFMKVqA"
+DHAN_CLIENT_ID = os.environ.get("DHAN_CLIENT_ID")
+DHAN_ACCESS_TOKEN = os.environ.get("DHAN_ACCESS_TOKEN")
 NEWS_API_KEY = "YOUR_NEWS_API_KEY"
 
 MAX_DAILY_LOSS_LIMIT = -495.00  

@@ -19,7 +19,7 @@ LOT_SIZE_MATRIX = {
     'BANKNIFTY': 30,
     'SENSEX': 20,
     'SBI': 750,
-    'CRUDEOIL': 100
+    'CRUDEOIL': 10
 }
 
 context = DhanContext(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
@@ -251,4 +251,5 @@ if __name__ == "__main__":
     
     if instruments:
         feed = marketfeed.DhanFeed(
-            DHAN_CLIENT_ID, 
+            DHAN_CLIENT_ID,DHAN_ACCESS_TOKEN
+        )

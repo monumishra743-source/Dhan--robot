@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import requests
 import time
-from dhanhq import dhan
+from dhanhq import Dhan
 import os #
 # =====================================================================
 # 1. आपके धन क्रेडेंशियल्स 
@@ -19,9 +19,9 @@ LOT_SIZE_MATRIX = {
     'SBI': 750
 }
 
-dhan = dhan(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
+Dhan = Dhan(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
 
-# =====================================================================
+# ========total_pnl = 0.0=============================================================
 # 2. लाइव न्यूज सेंटीमेंट इंजन
 # =====================================================================
 def get_live_news_sentiment(asset_name):

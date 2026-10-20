@@ -70,7 +70,7 @@ def check_daily_kill_switch():
                         Dhan.place_order(
                             security_id=pos.get('securityId'),
                             trading_symbol=pos.get('tradingSymbol'),
-                            transaction_type=dhan.SELL if net_qty > 0 else dhan.BUY,
+                            transaction_type=Dhan.SELL if net_qty > 0 else dhan.BUY,
                             exchange_segment=pos.get('exchangeSegment'),
                             product_type=pos.get('productType'),
                             order_type=dhan.MARKET,

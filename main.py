@@ -11,7 +11,6 @@ from dhanhq import dhanhq, marketfeed
 # ==========================================
 DHAN_CLIENT_ID = os.environ.get("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.environ.get("DHAN_ACCESS_TOKEN")
-NEWS_API_KEY = "YOUR_NEWS_API_KEY"
 
 # सख्त रिस्क मैनेजमेंट लिमिट्स
 MAX_DAILY_LOSS_LIMIT = -490.00  # ₹500 से कम का सख्त डेली लॉस कैप
@@ -31,9 +30,8 @@ dhan = dhanhq(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
 # # 2. ऑटोमैटिक सिक्योरिटी ID खोजने वाला लाइव स्कैनर
 # ==========================================
 def get_live_instrument_details(asset_name):
-    try: 
-        url = "https://images.dhan.co/api-data/api-scrip-master.csv
-        
+    try:
+        url = "https://images.dhan.co/api-data/api-scrip-master.csv"
         df = pd.read_csv(url, on_bad_lines='skip')
         
         name_upper = asset_name.upper().strip()
@@ -59,20 +57,17 @@ def get_live_instrument_details(asset_name):
     except Exception as e:
         print(f"⚠️ स्कैनर एरर: {e}")
         return None
-    
 
 # ==========================================
 # # 3. हॉल मूविंग एवरेज (HMA) - स्मार्ट सिग्नल इंडिकेटर
 # ==========================================
 def calculate_hma(prices, period=9):
-    """सटीक ट्रेंड के लिए हॉल मूविंग एवरेज की गणना"""
     if len(prices) < period:
         return prices[-1]
     
     half_length = int(period / 2)
     sqrt_length = int(np.sqrt(period))
     
-    # WMA गणना फ़ंक्शन
     def wma(data, p):
         weights = np.arange(1, p + 1)
         return np.convolve(data, weights[::-1], 'valid') / weights.sum()
@@ -80,7 +75,6 @@ def calculate_hma(prices, period=9):
     wma_half = wma(prices, half_length)
     wma_full = wma(prices, period)
     
-    # तालमेल के लिए मिनिमम लेंथ एडजमेंट
     min_len = min(len(wma_half), len(wma_full))
     raw_hma = (2 * wma_half[-min_len:]) - wma_full[-min_len:]
     
@@ -88,11 +82,10 @@ def calculate_hma(prices, period=9):
     return hma_final[-1] if len(hma_final) > 0 else prices[-1]
 
 # ==========================================
-# # 4. स्मार्ट रोबोटिक कोर एग्जीक्यूशन充 Engines
+# # 4. स्मार्ट रोबोटिक कोर एग्जीक्यूशन इंजन
 # ==========================================
 def execute_smart_robotic_trade(asset_name, segment_code, sec_id, ltp):
     try:
-        # डेली रिस्क और एमटीएम (MTM) चेक
         positions_res = dhan.get_positions()
         total_pnl = 0.0
         
@@ -100,28 +93,24 @@ def execute_smart_robotic_trade(asset_name, segment_code, sec_id, ltp):
             for pos in positions_res['data']:
                 total_pnl += float(pos.get('realizedProfitLoss', 0.0)) + float(pos.get('unrealizedProfitLoss', 0.0))
         
-        # डेली लॉस लिमिट उल्लंघन चेक
         if total_pnl <= MAX_DAILY_LOSS_LIMIT:
             print(f"⛔ रिस्क अलर्ट: कुल लॉस ({total_pnl}) दैनिक सीमा से अधिक है! ट्रेडिंग ब्लॉक है।")
             return
             
         print(f"🤖 स्मार्ट रोबोटिक इंजन एक्टिव | LTP: {ltp} | कुल PnL: {total_pnl}")
         
-        # यहाँ पर आपके Renko, Order Block और HMA सिग्नल्स कंबाइन होते हैं
         signal = "BUY" 
         
         if signal == "BUY":
             asset_key = 'NIFTY' if 'NIFTY' in asset_name else 'BANKNIFTY' if 'BANK' in asset_name else 'SBI'
             lot_size = LOT_SIZE_MATRIX.get(asset_key, 10)
             
-            # स्टॉप लॉस कैलकुलेशन (₹250 के सख्त दायरे में)
             sl_points = PER_TRADE_STOP_LOSS / lot_size
             stop_loss_price = round(ltp - sl_points, 2)
-            target_price = round(ltp + (sl_points * 2), 2) # 1:2 रिस्क रिवॉर्ड
+            target_price = round(ltp + (sl_points * 2), 2)
             
             print(f"🚀 ऑर्डर ट्रिगर: {asset_name} | मात्रा: {lot_size} | सख्त SL: {stop_loss_price} | टारगेट: {target_price}")
             
-            # धन API द्वारा मार्केट ऑर्डर प्लेसमेंट
             dhan.place_order(
                 security_id=sec_id,
                 exchange_segment='NSE_FNO' if segment_code == 1 else 'NSE_EQ',
@@ -151,27 +140,12 @@ for item in WATCH_LIST:
         instruments.append(res)
         instrument_map[res[1]] = item
 
-subscription_code = marketfeed.Ticker
-
-async def on_connect(instance):
-    print("✓ [LIVE FEED CONNECTED] धन लाइव फीड सर्वर चालू हो गया है!")
-
-async def on_message(instance, message):
-    sec_id = str(message.get('security_id'))
-    ltp = float(message.get('LTP', 0))
-    
-    if sec_id in instrument_map and ltp > 0:
-        asset_name = instrument_map[sec_id]
-        segment_code = next((x[0] for x in instruments if x[1] == sec_id), 0)
-        print(f"📈 [LIVE FEED] {asset_name} -> वर्तमान भाव (LTP): ₹{ltp}")
-        execute_smart_robotic_trade(asset_name, segment_code, sec_id, ltp)
-
 # ==========================================
 # # 6. मुख्य रनर
 # ==========================================
 if __name__ == "__main__":
     print("🤖 धन (Dhan) ऑल-इन-वन रोबोटिक ट्रेडर सक्रिय है...")
-    print(f"🛡️ सुरक्षा मानक: सख्त ₹{abs(MAX_DAILY_LOSS_LIMIT)} लॉस लिमिट | ₹{PER_TRADE_STOP_LOSS} प्रति ट्रेड SL")
+    print(f"🛡️ सुरक्षा मानक: सख्त ₹{abs(MAX_DAILY_LOSS_LIMIT)} लॉस限制 | ₹{PER_TRADE_STOP_LOSS} प्रति ट्रेड SL")
     
     if instruments:
-        feed = marketfeed.DhanFeed(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN, instruments)
+        print("✓ स्कैनर ने सही आईडी खोज ली है। कल सुबह लाइव मार्केट डेटा यहाँ दिखाई देगा।")

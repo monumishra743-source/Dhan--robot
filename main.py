@@ -4,7 +4,7 @@ import requests
 import time
 import os
 import asyncio
-from dhanhq import DhanContext, dhanhq, marketfeed
+from dhanhq import dhanhq, marketfeed
 
 # =====================================================================
 # 1. आपके धन क्रेडेंशियल्स 
@@ -22,8 +22,8 @@ LOT_SIZE_MATRIX = {
     'CRUDEOIL': 10
 }
 
-context = DhanContext(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
-dhan = dhanhq(context)
+context = dhanhq(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
+dhan = dhanhq
 
 # =====================================================================
 # 2. ऑटोमैटिक सिक्योरिटी ID खोजने वाला लाइव स्कैनर

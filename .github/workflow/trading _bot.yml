@@ -1,0 +1,32 @@
+name: Dhan Robotic Trader
+
+on:
+  schedule:
+    # भारतीय समय के अनुसार सोमवार से शुक्रवार सुबह 9:00 बजे (UTC 3:30 AM) खुद चालू होगा
+    - cron: '30 3 * * 1-5' 
+  workflow_dispatch: # मोबाइल से मैन्युअली चालू करने वाला बटन इनेबल करने के लिए
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests pandas numpy
+          pip install dhanhq
+
+      - name: Run Trading Bot
+        env:
+          DHAN_CLIENT_ID: ${{ secrets.DHAN_CLIENT_ID }}
+          DHAN_ACCESS_TOKEN: ${{ secrets.DHAN_ACCESS_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python main.py

@@ -32,9 +32,9 @@ dhan = dhanhq(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
 # ==========================================
 def get_live_instrument_details(asset_name):
     try: 
-        url = "https://images.dhan.co/api-data/api-scrip-master.csv"
-df = pd.read_csv(url, on_bad_lines='skip')
-
+        url = "https://images.dhan.co/api-data/api-scrip-master.csv
+        
+        df = pd.read_csv(url, on_bad_lines='skip')
         
         name_upper = asset_name.upper().strip()
         match = df[df['SEM_TRADING_SYMBOL'] == name_upper]
@@ -59,6 +59,7 @@ df = pd.read_csv(url, on_bad_lines='skip')
     except Exception as e:
         print(f"⚠️ स्कैनर एरर: {e}")
         return None
+    
 
 # ==========================================
 # # 3. हॉल मूविंग एवरेज (HMA) - स्मार्ट सिग्नल इंडिकेटर

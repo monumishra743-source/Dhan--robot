@@ -21,7 +21,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install requests pandas numpy
-          pip install dhanhq
+          pip install dhanhq==2.0.0
 
       - name: Run Trading Bot
         env:

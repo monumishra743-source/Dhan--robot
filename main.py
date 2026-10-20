@@ -73,7 +73,7 @@ def check_daily_kill_switch():
                             transaction_type=Dhan.SELL if net_qty > 0 else dhan.BUY,
                             exchange_segment=pos.get('exchangeSegment'),
                             product_type=pos.get('productType'),
-                            order_type=dhan.MARKET,
+                            order_type=Dhan.MARKET,
                             quantity=abs(net_qty)
                         )
             return True

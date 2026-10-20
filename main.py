@@ -52,7 +52,7 @@ def get_live_news_sentiment(asset_name):
 # =====================================================================
 def check_daily_kill_switch():
     try:
-        positions = dhan.get_positions()
+        positions = Dhan.get_positions()
         total_pnl = 0.0
         
         if positions.get('status') == 'success' and positions.get('data'):
@@ -67,7 +67,7 @@ def check_daily_kill_switch():
                 for pos in positions['data']:
                     net_qty = int(pos.get('netQty', 0))
                     if net_qty != 0:
-                        dhan.place_order(
+                        Dhan.place_order(
                             security_id=pos.get('securityId'),
                             trading_symbol=pos.get('tradingSymbol'),
                             transaction_type=dhan.SELL if net_qty > 0 else dhan.BUY,

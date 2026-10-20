@@ -2,8 +2,10 @@ import pandas as pd
 import numpy as np
 import requests
 import time
-from dhanhq import Dhan
-import os #
+import os
+import asyncio
+from dhanhq import DhanContext, dhanhq, marketfeed
+
 # =====================================================================
 # 1. आपके धन क्रेडेंशियल्स 
 # =====================================================================
@@ -16,13 +18,47 @@ LOT_SIZE_MATRIX = {
     'NIFTY': 65,
     'BANKNIFTY': 30,
     'SENSEX': 20,
-    'SBI': 750
+    'SBI': 750,
+    'CRUDEOIL': 100
 }
 
-Dhan = Dhan(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
+context = DhanContext(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
+dhan = dhanhq(context)
 
-# ========total_pnl = 0.0=============================================================
-# 2. लाइव न्यूज सेंटीमेंट इंजन
+# =====================================================================
+# 2. ऑटोमैटिक सिक्योरिटी ID खोजने वाला लाइव स्कैनर
+# =====================================================================
+def get_live_instrument_details(asset_name):
+    try:
+        url = "https://dhan.co"
+        df = pd.read_csv(url)
+        
+        name_upper = asset_name.upper().strip()
+        match = df[df['SEM_TRADING_SYMBOL'] == name_upper]
+        
+        if match.empty:
+            match = df[df['SEM_TRADING_SYMBOL'].str.contains(name_upper, na=False, case=False)]
+        
+        if not match.empty:
+            row = match.iloc[0]
+            sec_id = str(row['SEM_SMST_SECURITY_ID'])
+            seg_name = str(row['SEM_SEGMENT'])
+            
+            if 'FO' in seg_name: segment_code = 1
+            elif 'MCX' in seg_name or 'COMM' in seg_name: segment_code = 11
+            else: segment_code = 0
+                
+            print(f"✓ लाइव स्कैनर: {asset_name} मिल गया! ID: {sec_id}, सेगमेंट कोड: {segment_code}")
+            return (segment_code, sec_id)
+        else:
+            print(f"✗ लाइव स्कैनर: {asset_name} की कोई ID नहीं मिल सकी।")
+            return None
+    except Exception as e:
+        print(f"⚠️ स्कैनर एरर: {e}")
+        return None
+
+# =====================================================================
+# 3. लाइव न्यूज सेंटीमेंट इंजन
 # =====================================================================
 def get_live_news_sentiment(asset_name):
     try:
@@ -48,11 +84,11 @@ def get_live_news_sentiment(asset_name):
         return "NEUTRAL"
 
 # =====================================================================
-# 3. डेली रिस्क गार्ड (Daily Kill Switch - ₹500)
+# 4. डेली रिस्क गार्ड (Daily Kill Switch - ₹500)
 # =====================================================================
 def check_daily_kill_switch():
     try:
-        positions = Dhan.get_positions()
+        positions = dhan.get_positions()
         total_pnl = 0.0
         
         if positions.get('status') == 'success' and positions.get('data'):
@@ -67,13 +103,13 @@ def check_daily_kill_switch():
                 for pos in positions['data']:
                     net_qty = int(pos.get('netQty', 0))
                     if net_qty != 0:
-                        Dhan.place_order(
+                        dhan.place_order(
                             security_id=pos.get('securityId'),
                             trading_symbol=pos.get('tradingSymbol'),
-                            transaction_type=Dhan.SELL if net_qty > 0 else dhan.BUY,
+                            transaction_type='SELL' if net_qty > 0 else 'BUY',
                             exchange_segment=pos.get('exchangeSegment'),
                             product_type=pos.get('productType'),
-                            order_type=Dhan.MARKET,
+                            order_type='MARKET',
                             quantity=abs(net_qty)
                         )
             return True
@@ -83,7 +119,7 @@ def check_daily_kill_switch():
         return False
 
 # =====================================================================
-# 4. डा. देवेन्द्र रैंको सुपरट्रेंड + इंस्टीट्यूशनल स्कैनर
+# 5. डा. देवेन्द्र रैंको सुपरट्रेंड + इंस्टीट्यूशनल स्कैनर
 # =====================================================================
 def process_indicators_and_signals(df, asset_name):
     high_low = df['high'] - df['low']
@@ -111,21 +147,12 @@ def process_indicators_and_signals(df, asset_name):
     return raw_signal, technical_sl
 
 # =====================================================================
-# 5. कोर स्मार्ट एक्जीक्यूशन इंजन
+# 6. कोर स्मार्ट एक्जीक्यूशन इंजन + लाइव डेटा इंटीग्रेशन
 # =====================================================================
-def execute_smart_robotic_trade(asset_name, segment_type, security_id):
+def execute_smart_robotic_trade(asset_name, segment_code, security_id, ltp):
     if check_daily_kill_switch():
         return
         
-    try:
-        meta = dhan.get_fundamental_data(security_id)
-        ltp = float(meta.get('last_price', 0))
-        uc = float(meta.get('upper_circuit_limit', 0))
-        lc = float(meta.get('lower_circuit_limit', 0))
-    except:
-        print("❌ धन लाइव डेटा फेच करने में असमर्थ।")
-        return
-
     dummy_data = {
         'open': [ltp, ltp, ltp], 
         'high': [ltp, ltp, ltp], 
@@ -137,7 +164,6 @@ def execute_smart_robotic_trade(asset_name, segment_type, security_id):
     
     base_signal, tech_sl = process_indicators_and_signals(df, asset_name)
     if base_signal == "HOLD":
-        print(f"🔒 {asset_name}: कोई इंस्टीट्यूशनल सिग्नल नहीं है। LTP: {ltp}")
         return
 
     matched_key = next((k for k in LOT_SIZE_MATRIX.keys() if k in asset_name.upper()), None)
@@ -153,21 +179,76 @@ def execute_smart_robotic_trade(asset_name, segment_type, security_id):
         return
 
     news = get_live_news_sentiment(matched_key)
+    exchange_segment = 'NSE_FNO' if segment_code == 1 else ('MCX' if segment_code == 11 else 'NSE_EQ')
+
+    if base_signal == "BUY" and news != "BEARISH":
+        print(f"🚀 [DHAN ROBOT] 1 लॉट ({lot_size} Qty) BUY किया जा रहा है...")
+        try:
+            dhan.place_order(
+                security_id=security_id,
+                trading_symbol=asset_name,
+                transaction_type='BUY',
+                exchange_segment=exchange_segment,
+                product_type='MARGIN',
+                order_type='MARKET',
+                quantity=lot_size
+            )
+        except Exception as e:
+            print(f"❌ ऑर्डर निष्पादन विफल: {e}")
+
+    elif base_signal == "SELL" and news != "BULLISH":
+        print(f"🚀 [DHAN ROBOT] 1 लॉट ({lot_size} Qty) SELL किया जा रहा है...")
+        try:
+            dhan.place_order(
+                security_id=security_id,
+                trading_symbol=asset_name,
+                transaction_type='SELL',
+                exchange_segment=exchange_segment,
+                product_type='MARGIN',
+                order_type='MARKET',
+                quantity=lot_size
+            )
+        except Exception as e:
+            print(f"❌ ऑर्डर निष्पादन विफल: {e}")
+
+# =====================================================================
+# 7. WEBSOCKET (लाइव इनपुट रीडर)
+# =====================================================================
+github_input = os.environ.get("INPUT_STOCK_NAME", "SBIN")
+WATCH_LIST = [item.strip() for item in github_input.split(",")]
+
+instruments = []
+instrument_map = {} 
+
+print(f"🔄 आपके द्वारा सर्च किए गए स्टॉक्स को स्कैन किया जा रहा है: {WATCH_LIST}")
+for item in WATCH_LIST:
+    res = get_live_instrument_details(item)
+    if res:
+        instruments.append(res)
+        instrument_map[res[1]] = item 
+
+subscription_code = marketfeed.Ticker 
+
+async def on_connect(instance):
+    print("✓ [LIVE FEED CONNECTED] धन लाइव फीड सर्वर चालू हो गया है!")
+
+async def on_message(instance, message):
+    sec_id = str(message.get('security_id'))
+    ltp = float(message.get('LTP', 0))
     
-    if base_signal == "BUY":
-        if ltp >= (uc * 0.99) and uc > 0: return
-        if news == "BEARISH": return
-        print(f"🚀 [DHAN ROBOT FULFILLED] 1 लॉट ({lot_size} Qty) BUY किया जा रहा है...")
+    if sec_id in instrument_map and ltp > 0:
+        asset_name = instrument_map[sec_id]
+        segment_code = next((x[0] for x in instruments if x[1] == sec_id), 0)
+        print(f"📈 [LIVE FEED] {asset_name} → वर्तमान भाव (LTP): ₹{ltp}")
+        execute_smart_robotic_trade(asset_name, segment_code, sec_id, ltp)
 
-    elif base_signal == "SELL":
-        if ltp <= (lc * 1.01) and lc > 0: return
-        if news == "BULLISH": return
-        print(f"🚀 [DHAN ROBOT FULFILLED] 1 लॉट ({lot_size} Qty) SELL किया जा रहा है...")
-
+# =====================================================================
+# 8. मुख्य रनर
+# =====================================================================
 if __name__ == "__main__":
     print("🤖 धन (Dhan) ऑल-इन-वन रोबोटिक ट्रेडर सक्रिय है...")
-    print("📈 सुरक्षा मानक: सख्त ₹500 लॉस लिमिट | नो प्रॉफिट लिमिट (असीमित मुनाफा)")
+    print("📈 सुरक्षा मानक: सख्त ₹500 लॉस लिमिट | नो प्रॉफिट लिमिट")
     
-    while True:
-        execute_smart_robotic_trade(asset_name="BANKNIFTY", segment_type="INDICES", security_id="99926005")
-        time.sleep(60)
+    if instruments:
+        feed = marketfeed.DhanFeed(
+            DHAN_CLIENT_ID, 

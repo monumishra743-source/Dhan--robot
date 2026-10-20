@@ -252,5 +252,5 @@ if __name__ == "__main__":
     
     if instruments:
         feed = marketfeed.DhanFeed(
-            DHAN_CLIENT_ID,DHAN_ACCESS_TOKEN
+            DHAN_CLIENT_ID,DHAN_ACCESS_TOKEN,instruments
         )

@@ -19,7 +19,7 @@ LOT_SIZE_MATRIX = {
     'SBI': 750
 }
 
-dhan = dhanhq(client_id=DHAN_CLIENT_ID,access_token= DHAN_ACCESS_TOKEN)
+dhan = dhan(client_id=DHAN_CLIENT_ID,access_token= DHAN_ACCESS_TOKEN)
 
 # =====================================================================
 # 2. लाइव न्यूज सेंटीमेंट इंजन

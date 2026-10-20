@@ -22,15 +22,16 @@ LOT_SIZE_MATRIX = {
     'CRUDEOIL': 10
 }
 
-context = dhanhq(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
-dhan = dhanhq
+dhan = dhanhq(DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN)
 
+ 
 # =====================================================================
 # 2. ऑटोमैटिक सिक्योरिटी ID खोजने वाला लाइव स्कैनर
 # =====================================================================
 def get_live_instrument_details(asset_name):
     try:
-        url = "https://dhan.co"
+        url = "https://images.dhan.co/api-data/api-scrip-master.csv"
+
         df = pd.read_csv(url)
         
         name_upper = asset_name.upper().strip()
